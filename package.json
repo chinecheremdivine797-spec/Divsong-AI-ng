@@ -1,0 +1,22 @@
+{
+  "name": "div-song-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DIV SONG AI Android music creation application",
+  "scripts": {
+    "android:debug": "gradlew.bat assembleDebug",
+    "android:release": "gradlew.bat assembleRelease",
+    "android:clean": "gradlew.bat clean",
+    "android:check": "gradlew.bat lint test",
+    "android:build": "gradlew.bat clean assembleDebug",
+    "android:build-release": "gradlew.bat clean assembleRelease"
+  },
+  "keywords": [
+    "div-song-ai",
+    "ai-music",
+    "android",
+    "kotlin",
+    "firebase"
+  ],
+  "license": "UNLICENSED"
+}
