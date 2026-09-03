@@ -1,0 +1,6 @@
+{
+  "name": "DIV SONG AI",
+  "description": "Create Your Sound. Bring Your Ideas to Life. Full-stack AI music generation and lyrics studio with customizable genres, moods, vocals, and sound engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
