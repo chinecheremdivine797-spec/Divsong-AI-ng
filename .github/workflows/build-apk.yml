@@ -29,6 +29,28 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
+      - name: Generate debug keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYSTORE_PATH="${GITHUB_WORKSPACE}/debug.keystore"
+
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            keytool -genkeypair \
+              -v \
+              -keystore "$KEYSTORE_PATH" \
+              -storepass android \
+              -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          test -f "$KEYSTORE_PATH"
+          ls -lh "$KEYSTORE_PATH"
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
