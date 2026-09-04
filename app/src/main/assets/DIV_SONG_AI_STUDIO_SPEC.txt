@@ -1,0 +1,40 @@
+DIV SONG AI — STUDIO BUILD SPEC
+
+PAYMENTS: PAUSED. Paystack integration must remain disabled until explicitly resumed.
+
+AI SONG CREATOR
+- User can describe a song idea or write lyrics/script.
+- AI can assist with lyrics/script writing.
+- User can choose genre, mood, language, tempo and vocal style.
+- Create action is intended to generate a complete song with vocals and instruments.
+
+VOICE STUDIO
+- User can record their own voice.
+- Voice workflow should support cleanup/amplification and mixing with selected/generated music.
+- Preserve the user's source recording and project state.
+
+MUSIC VIDEO STUDIO
+- Import video and photos.
+- Combine vocals, music, video and images.
+- Synchronize media automatically.
+- Support lyrics/subtitles, transitions and effects.
+- Export a finished music video for social posting.
+
+PROFESSIONAL STUDIO
+- Multitrack workflow for vocals, music and media.
+- Trimming, volume, effects, mixing and mastering controls.
+- Automatic project assembly for users who want one-click creation.
+
+ADMIN
+- Protected admin-only dashboard.
+- User statistics and activity.
+- Songs/projects and moderation.
+- AI generation usage and errors.
+- Storage/system status.
+- Credits and subscription/payment statistics reserved for later.
+- User management, reports, announcements and configuration.
+
+SECURITY
+- Admin authorization must be enforced by the backend/database, not only hidden in the UI.
+- Payment secrets must never be shipped in the APK.
+- Real AI generation services must be connected through secure backend services; no fake successful generation/payment results.
