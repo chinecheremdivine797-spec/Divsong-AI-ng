@@ -12,9 +12,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
@@ -32,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -47,15 +48,20 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.ui.components.MiniPlayerBar
 import com.example.ui.screens.AdminScreen
+import com.example.ui.screens.AiLyricsScreen
 import com.example.ui.screens.AuthScreen
 import com.example.ui.screens.CreateMusicScreen
 import com.example.ui.screens.ExploreScreen
 import com.example.ui.screens.HelpLegalScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.LibraryScreen
+import com.example.ui.screens.MultitrackStudioScreen
+import com.example.ui.screens.MusicVideoStudioScreen
 import com.example.ui.screens.PricingScreen
 import com.example.ui.screens.ProfileSettingsScreen
+import com.example.ui.screens.ProjectsScreen
 import com.example.ui.screens.SongDetailsScreen
+import com.example.ui.screens.VocalStudioScreen
 import com.example.ui.theme.DivBackground
 import com.example.ui.theme.DivBorder
 import com.example.ui.theme.DivCyan
@@ -71,6 +77,11 @@ import com.example.ui.viewmodel.MainViewModel
 object Routes {
     const val HOME = "home"
     const val CREATE = "create"
+    const val STUDIO = "studio"
+    const val VOICE = "voice"
+    const val VIDEO = "video"
+    const val PROJECTS = "projects"
+    const val LYRICS = "lyrics"
     const val LIBRARY = "library"
     const val EXPLORE = "explore"
     const val PROFILE = "profile"
@@ -108,7 +119,18 @@ fun AppNavigation(
 
     val playbackProgress = if (durationMs > 0) currentPositionMs.toFloat() / durationMs.toFloat() else 0f
 
-    val showBottomBar = currentRoute in listOf(Routes.HOME, Routes.CREATE, Routes.LIBRARY, Routes.EXPLORE, Routes.PROFILE)
+    val showBottomBar = currentRoute in listOf(
+        Routes.HOME,
+        Routes.CREATE,
+        Routes.STUDIO,
+        Routes.VOICE,
+        Routes.VIDEO,
+        Routes.PROJECTS,
+        Routes.PROFILE,
+        Routes.LYRICS,
+        Routes.LIBRARY,
+        Routes.EXPLORE
+    )
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -161,29 +183,7 @@ fun AppNavigation(
                             modifier = Modifier.testTag("nav_item_home")
                         )
 
-                        // 2. Explore
-                        NavigationBarItem(
-                            selected = currentRoute == Routes.EXPLORE,
-                            onClick = {
-                                navController.navigate(Routes.EXPLORE) {
-                                    popUpTo(Routes.HOME) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(Icons.Default.Explore, contentDescription = "Explore", modifier = Modifier.size(20.dp)) },
-                            label = { Text("Explore", fontSize = 10.sp) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = DivCyan,
-                                selectedTextColor = DivCyan,
-                                unselectedIconColor = DivTextSecondary,
-                                unselectedTextColor = DivTextSecondary,
-                                indicatorColor = Color.Transparent
-                            ),
-                            modifier = Modifier.testTag("nav_item_explore")
-                        )
-
-                        // 3. Create (Signature Highlighted Button)
+                        // 2. Create
                         NavigationBarItem(
                             selected = currentRoute == Routes.CREATE,
                             onClick = {
@@ -193,41 +193,30 @@ fun AppNavigation(
                                     restoreState = true
                                 }
                             },
-                            icon = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                        .background(DivGradientBrand),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MusicNote,
-                                        contentDescription = "Create",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            },
-                            label = { Text("Create", fontSize = 10.sp, color = DivPink) },
+                            icon = { Icon(Icons.Default.MusicNote, contentDescription = "Create", modifier = Modifier.size(20.dp)) },
+                            label = { Text("Create", fontSize = 10.sp) },
                             colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = DivPink,
+                                selectedTextColor = DivPink,
+                                unselectedIconColor = DivTextSecondary,
+                                unselectedTextColor = DivTextSecondary,
                                 indicatorColor = Color.Transparent
                             ),
                             modifier = Modifier.testTag("nav_item_create")
                         )
 
-                        // 4. Library
+                        // 3. Studio (DAW)
                         NavigationBarItem(
-                            selected = currentRoute == Routes.LIBRARY,
+                            selected = currentRoute == Routes.STUDIO,
                             onClick = {
-                                navController.navigate(Routes.LIBRARY) {
+                                navController.navigate(Routes.STUDIO) {
                                     popUpTo(Routes.HOME) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(Icons.Default.LibraryMusic, contentDescription = "Library", modifier = Modifier.size(20.dp)) },
-                            label = { Text("Library", fontSize = 10.sp) },
+                            icon = { Icon(Icons.Default.GraphicEq, contentDescription = "Studio", modifier = Modifier.size(20.dp)) },
+                            label = { Text("Studio", fontSize = 10.sp) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = DivCyan,
                                 selectedTextColor = DivCyan,
@@ -235,10 +224,76 @@ fun AppNavigation(
                                 unselectedTextColor = DivTextSecondary,
                                 indicatorColor = Color.Transparent
                             ),
-                            modifier = Modifier.testTag("nav_item_library")
+                            modifier = Modifier.testTag("nav_item_studio")
                         )
 
-                        // 5. Profile
+                        // 4. Voice
+                        NavigationBarItem(
+                            selected = currentRoute == Routes.VOICE,
+                            onClick = {
+                                navController.navigate(Routes.VOICE) {
+                                    popUpTo(Routes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(Icons.Default.Mic, contentDescription = "Voice", modifier = Modifier.size(20.dp)) },
+                            label = { Text("Voice", fontSize = 10.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = DivPurpleLight,
+                                selectedTextColor = DivPurpleLight,
+                                unselectedIconColor = DivTextSecondary,
+                                unselectedTextColor = DivTextSecondary,
+                                indicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier.testTag("nav_item_voice")
+                        )
+
+                        // 5. Video
+                        NavigationBarItem(
+                            selected = currentRoute == Routes.VIDEO,
+                            onClick = {
+                                navController.navigate(Routes.VIDEO) {
+                                    popUpTo(Routes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(Icons.Default.Movie, contentDescription = "Video", modifier = Modifier.size(20.dp)) },
+                            label = { Text("Video", fontSize = 10.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color(0xFFFFD166),
+                                selectedTextColor = Color(0xFFFFD166),
+                                unselectedIconColor = DivTextSecondary,
+                                unselectedTextColor = DivTextSecondary,
+                                indicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier.testTag("nav_item_video")
+                        )
+
+                        // 6. Projects
+                        NavigationBarItem(
+                            selected = currentRoute == Routes.PROJECTS,
+                            onClick = {
+                                navController.navigate(Routes.PROJECTS) {
+                                    popUpTo(Routes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(Icons.Default.Folder, contentDescription = "Projects", modifier = Modifier.size(20.dp)) },
+                            label = { Text("Projects", fontSize = 10.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = DivCyan,
+                                selectedTextColor = DivCyan,
+                                unselectedIconColor = DivTextSecondary,
+                                unselectedTextColor = DivTextSecondary,
+                                indicatorColor = Color.Transparent
+                            ),
+                            modifier = Modifier.testTag("nav_item_projects")
+                        )
+
+                        // 7. Profile
                         NavigationBarItem(
                             selected = currentRoute == Routes.PROFILE,
                             onClick = {
@@ -273,6 +328,11 @@ fun AppNavigation(
                 HomeScreen(
                     viewModel = viewModel,
                     onNavigateToCreate = { navController.navigate(Routes.CREATE) },
+                    onNavigateToLyrics = { navController.navigate(Routes.LYRICS) },
+                    onNavigateToStudio = { navController.navigate(Routes.STUDIO) },
+                    onNavigateToVoice = { navController.navigate(Routes.VOICE) },
+                    onNavigateToVideo = { navController.navigate(Routes.VIDEO) },
+                    onNavigateToProjects = { navController.navigate(Routes.PROJECTS) },
                     onNavigateToExplore = { navController.navigate(Routes.EXPLORE) },
                     onNavigateToLibrary = { navController.navigate(Routes.LIBRARY) },
                     onNavigateToPricing = { navController.navigate(Routes.PRICING) },
@@ -286,6 +346,56 @@ fun AppNavigation(
                     onSongGenerated = { newSongId ->
                         navController.navigate(Routes.songDetails(newSongId))
                     }
+                )
+            }
+
+            composable(Routes.LYRICS) {
+                AiLyricsScreen(
+                    viewModel = viewModel,
+                    onUseInCreator = { lyricsText ->
+                        viewModel.lyricsTextState.value = lyricsText
+                        viewModel.lyricsOptionState.value = "Write My Own"
+                        navController.navigate(Routes.CREATE)
+                    },
+                    onSendToVocalStudio = { lyricsText ->
+                        viewModel.lyricsTextState.value = lyricsText
+                        navController.navigate(Routes.VOICE)
+                    },
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.STUDIO) {
+                MultitrackStudioScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onExportClick = { navController.navigate(Routes.PROJECTS) }
+                )
+            }
+
+            composable(Routes.VOICE) {
+                VocalStudioScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToStudio = { _, _ -> navController.navigate(Routes.STUDIO) }
+                )
+            }
+
+            composable(Routes.VIDEO) {
+                MusicVideoStudioScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onOpenProjects = { navController.navigate(Routes.PROJECTS) }
+                )
+            }
+
+            composable(Routes.PROJECTS) {
+                ProjectsScreen(
+                    viewModel = viewModel,
+                    onOpenProjectInStudio = { navController.navigate(Routes.STUDIO) },
+                    onOpenProjectInVoice = { navController.navigate(Routes.VOICE) },
+                    onOpenProjectInVideo = { navController.navigate(Routes.VIDEO) },
+                    onCreateNewProject = { navController.navigate(Routes.CREATE) }
                 )
             }
 

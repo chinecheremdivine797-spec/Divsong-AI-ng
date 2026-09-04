@@ -9,6 +9,7 @@ import com.example.data.ai.MusicProviderManager
 import com.example.data.local.AppDatabase
 import com.example.data.local.entities.GenerationJobEntity
 import com.example.data.local.entities.PlanEntity
+import com.example.data.local.entities.ProjectEntity
 import com.example.data.local.entities.ReportEntity
 import com.example.data.local.entities.SongEntity
 import com.example.data.local.entities.TransactionEntity
@@ -16,6 +17,7 @@ import com.example.data.local.entities.UserEntity
 import com.example.data.repository.AdminRepository
 import com.example.data.repository.AuthRepository
 import com.example.data.repository.PlanRepository
+import com.example.data.repository.ProjectRepository
 import com.example.data.repository.SongRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,12 +33,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
     val authRepo = AuthRepository(database)
     val songRepo = SongRepository(database)
+    val projectRepo = ProjectRepository(database)
     val planRepo = PlanRepository(database)
     val adminRepo = AdminRepository(database)
 
     // Current User
     val currentUser: StateFlow<UserEntity?> = authRepo.getCurrentUser()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // User's Studio Projects
+    val userProjects: StateFlow<List<ProjectEntity>> = authRepo.currentUserId.flatMapLatest { uid ->
+        projectRepo.getUserProjects(uid)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val draftProjects: StateFlow<List<ProjectEntity>> = authRepo.currentUserId.flatMapLatest { uid ->
+        projectRepo.getDraftProjects(uid)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Public explore songs
     val publicSongs: StateFlow<List<SongEntity>> = songRepo.getPublicSongs()
@@ -352,5 +364,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         genreState.value = genre
         moodState.value = mood
         promptState.value = prompt
+    }
+
+    fun createProject(
+        name: String,
+        genre: String = "Afrobeats",
+        mood: String = "Inspiring",
+        lyrics: String = "",
+        masterAudioUrl: String = "",
+        vocalTrackUrl: String = "",
+        instrumentalTrackUrl: String = "",
+        videoUrl: String = "",
+        status: String = "draft"
+    ) {
+        viewModelScope.launch {
+            val uid = authRepo.currentUserId.value
+            projectRepo.createProject(
+                userId = uid,
+                name = name,
+                genre = genre,
+                mood = mood,
+                lyrics = lyrics,
+                masterAudioUrl = masterAudioUrl,
+                vocalTrackUrl = vocalTrackUrl,
+                instrumentalTrackUrl = instrumentalTrackUrl,
+                videoUrl = videoUrl,
+                status = status
+            )
+        }
+    }
+
+    fun renameProject(projectId: String, newName: String) {
+        viewModelScope.launch {
+            projectRepo.renameProject(projectId, newName)
+        }
+    }
+
+    fun duplicateProject(project: ProjectEntity) {
+        viewModelScope.launch {
+            projectRepo.duplicateProject(project)
+        }
+    }
+
+    fun deleteProject(projectId: String) {
+        viewModelScope.launch {
+            projectRepo.deleteProject(projectId)
+        }
     }
 }

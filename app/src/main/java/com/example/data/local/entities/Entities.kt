@@ -132,3 +132,26 @@ data class AppSettingEntity(
     @PrimaryKey val key: String,
     val value: String
 )
+
+@Entity(tableName = "projects")
+data class ProjectEntity(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val name: String,
+    val coverImageUrl: String = "",
+    val genre: String = "Afrobeats",
+    val mood: String = "Inspiring",
+    val lyrics: String = "",
+    val vocalTrackUrl: String = "",
+    val instrumentalTrackUrl: String = "",
+    val masterAudioUrl: String = "",
+    val videoUrl: String = "",
+    val tracksJson: String = "",       // serialized list of audio stems/tracks
+    val videoClipsJson: String = "",   // serialized list of video clips & transitions
+    val subtitlesJson: String = "",    // timed lyrics/subtitles
+    val effectsJson: String = "",      // audio & video effects configuration
+    val status: String = "draft",      // "draft", "ready", "rendering", "exported"
+    val durationSeconds: Int = 180,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
+)

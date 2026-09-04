@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.local.dao.AppSettingDao
 import com.example.data.local.dao.GenerationJobDao
 import com.example.data.local.dao.PlanDao
+import com.example.data.local.dao.ProjectDao
 import com.example.data.local.dao.ReportDao
 import com.example.data.local.dao.SongDao
 import com.example.data.local.dao.SubscriptionDao
@@ -16,6 +17,7 @@ import com.example.data.local.dao.UserDao
 import com.example.data.local.entities.AppSettingEntity
 import com.example.data.local.entities.GenerationJobEntity
 import com.example.data.local.entities.PlanEntity
+import com.example.data.local.entities.ProjectEntity
 import com.example.data.local.entities.ReportEntity
 import com.example.data.local.entities.SongEntity
 import com.example.data.local.entities.SubscriptionEntity
@@ -34,14 +36,16 @@ import kotlinx.coroutines.launch
         SubscriptionEntity::class,
         TransactionEntity::class,
         ReportEntity::class,
-        AppSettingEntity::class
+        AppSettingEntity::class,
+        ProjectEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun songDao(): SongDao
+    abstract fun projectDao(): ProjectDao
     abstract fun generationJobDao(): GenerationJobDao
     abstract fun planDao(): PlanDao
     abstract fun subscriptionDao(): SubscriptionDao

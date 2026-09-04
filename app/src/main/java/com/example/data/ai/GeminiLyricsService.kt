@@ -124,6 +124,11 @@ object GeminiLyricsService {
                     "shorten" -> "Condense these lyrics into punchier, memorable verses and a catchy chorus."
                     "expand" -> "Add an emotional bridge, richer imagery, and extra verse details to these lyrics."
                     "style" -> "Adapt the vocabulary and cadence of these lyrics to fit a $genre ($mood) musical style."
+                    "deeper" -> "Make these lyrics significantly deeper, more introspective, poetic, and emotionally vulnerable."
+                    "catchier" -> "Make the hooks, rhythm, and phrases much catchier, with repetition, memorable earworms, and infectious groove."
+                    "stronger_chorus" -> "Completely rewrite the [Chorus] to make it an epic, anthemic, explosive stadium-filling climax."
+                    "rhyme" -> "Refine and change the rhyme scheme into sophisticated internal rhymes, multi-syllabic rhymes, and fresh word choices."
+                    "rewrite" -> "Completely rewrite these lyrics with an exciting fresh angle on the same theme."
                     else -> "Polish and format these song lyrics."
                 }
 

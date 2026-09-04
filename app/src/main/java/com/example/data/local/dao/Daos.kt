@@ -8,6 +8,7 @@ import androidx.room.Update
 import com.example.data.local.entities.AppSettingEntity
 import com.example.data.local.entities.GenerationJobEntity
 import com.example.data.local.entities.PlanEntity
+import com.example.data.local.entities.ProjectEntity
 import com.example.data.local.entities.ReportEntity
 import com.example.data.local.entities.SongEntity
 import com.example.data.local.entities.SubscriptionEntity
@@ -163,4 +164,34 @@ interface AppSettingDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setValue(setting: AppSettingEntity)
+}
+
+@Dao
+interface ProjectDao {
+    @Query("SELECT * FROM projects WHERE userId = :userId ORDER BY updatedAt DESC")
+    fun getProjectsByUserId(userId: String): Flow<List<ProjectEntity>>
+
+    @Query("SELECT * FROM projects WHERE userId = :userId AND status = 'draft' ORDER BY updatedAt DESC")
+    fun getDraftProjectsByUserId(userId: String): Flow<List<ProjectEntity>>
+
+    @Query("SELECT * FROM projects WHERE id = :projectId LIMIT 1")
+    fun getProjectById(projectId: String): Flow<ProjectEntity?>
+
+    @Query("SELECT * FROM projects WHERE id = :projectId LIMIT 1")
+    suspend fun getProjectByIdSync(projectId: String): ProjectEntity?
+
+    @Query("SELECT * FROM projects ORDER BY updatedAt DESC")
+    fun getAllProjects(): Flow<List<ProjectEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdate(project: ProjectEntity)
+
+    @Query("UPDATE projects SET name = :newName, updatedAt = :updatedAt WHERE id = :projectId")
+    suspend fun renameProject(projectId: String, newName: String, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE projects SET status = :status, updatedAt = :updatedAt WHERE id = :projectId")
+    suspend fun updateStatus(projectId: String, status: String, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("DELETE FROM projects WHERE id = :projectId")
+    suspend fun deleteProject(projectId: String)
 }

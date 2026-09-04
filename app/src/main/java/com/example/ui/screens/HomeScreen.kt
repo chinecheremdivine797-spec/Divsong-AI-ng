@@ -1,12 +1,14 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,17 +19,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,25 +49,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.R
 import com.example.ui.components.DivLogo
 import com.example.ui.components.SamplePromptCard
 import com.example.ui.components.SongCard
 import com.example.ui.components.WaveformVisualizer
 import com.example.ui.theme.DivBackground
 import com.example.ui.theme.DivBorder
-import com.example.ui.theme.DivCard
 import com.example.ui.theme.DivCyan
 import com.example.ui.theme.DivGradientBrand
-import com.example.ui.theme.DivGradientPurpleCyan
 import com.example.ui.theme.DivPink
 import com.example.ui.theme.DivPurple
 import com.example.ui.theme.DivPurpleLight
@@ -71,19 +71,28 @@ import com.example.ui.theme.DivTextMuted
 import com.example.ui.theme.DivTextSecondary
 import com.example.ui.viewmodel.MainViewModel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
     onNavigateToCreate: () -> Unit,
+    onNavigateToLyrics: () -> Unit,
+    onNavigateToStudio: () -> Unit,
+    onNavigateToVoice: () -> Unit,
+    onNavigateToVideo: () -> Unit,
+    onNavigateToProjects: () -> Unit,
     onNavigateToExplore: () -> Unit,
     onNavigateToLibrary: () -> Unit,
     onNavigateToPricing: () -> Unit,
     onSongClick: (String) -> Unit
 ) {
     val publicSongs by viewModel.publicSongs.collectAsStateWithLifecycle()
+    val userProjects by viewModel.userProjects.collectAsStateWithLifecycle()
     val currentPlayingSong by viewModel.currentPlayingSong.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+
+    val userPlan = (currentUser?.planId ?: "free").uppercase()
 
     LazyColumn(
         modifier = Modifier
@@ -91,62 +100,80 @@ fun HomeScreen(
             .background(DivBackground)
             .padding(horizontal = 16.dp)
             .testTag("home_screen"),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
+        // Top Header Bar
         item {
-            Spacer(modifier = Modifier.height(12.dp))
-            // Header Bar
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 DivLogo(size = 36.dp, showTagline = false)
-                // Credits Pill
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(DivSurfaceDark)
-                        .border(1.dp, DivBorder, RoundedCornerShape(20.dp))
-                        .clickable { onNavigateToPricing() }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .testTag("user_credits_pill"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = DivCyan,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Plan Tier Badge
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                when (userPlan) {
+                                    "PRO" -> DivPurple.copy(alpha = 0.3f)
+                                    "STUDIO" -> DivPink.copy(alpha = 0.3f)
+                                    else -> DivSurfaceDark
+                                }
+                            )
+                            .border(1.dp, DivBorder, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
                         Text(
-                            text = "${currentUser?.credits ?: 10} Credits",
-                            color = Color.White,
-                            fontSize = 12.sp,
+                            text = userPlan,
+                            color = when (userPlan) {
+                                "PRO" -> DivCyan
+                                "STUDIO" -> DivPink
+                                else -> DivTextSecondary
+                            },
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+
+                    // Credits Pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(DivSurfaceDark)
+                            .border(1.dp, DivBorder, RoundedCornerShape(20.dp))
+                            .clickable { onNavigateToPricing() }
+                            .padding(horizontal = 12.dp, vertical = 5.dp)
+                            .testTag("user_credits_pill"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = DivCyan, modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("${currentUser?.credits ?: 10} Credits", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
 
-        // Hero Section Card
+        // Hero Studio Banner
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .border(1.5.dp, Brush.horizontalGradient(listOf(DivPurple, DivPink, DivCyan)), RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(22.dp))
+                    .border(1.5.dp, Brush.horizontalGradient(listOf(DivPurple, DivPink, DivCyan)), RoundedCornerShape(22.dp))
                     .testTag("hero_section"),
                 colors = CardDefaults.cardColors(containerColor = DivSurfaceDark)
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier.padding(18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Tagline Pill
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(30.dp))
@@ -155,7 +182,7 @@ fun HomeScreen(
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "CREATE YOUR SOUND. BRING YOUR IDEAS TO LIFE.",
+                            text = "DIV SONG AI • CREATIVE STUDIO",
                             color = DivCyan,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
@@ -163,39 +190,37 @@ fun HomeScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        text = "Turn Your Ideas Into Music With AI",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 30.sp
-                    )
-
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "Describe the song you imagine, choose your style, and let DIV SONG AI help bring your music idea to life.",
-                        fontSize = 13.sp,
+                        text = "Turn Your Creative Vision Into Music & Video",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 28.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Complete AI Music Production, Vocal Studio, 5-Track Multitrack DAW, and 4K Music Videos in one app.",
+                        fontSize = 12.sp,
                         color = DivTextSecondary,
                         textAlign = TextAlign.Center,
-                        lineHeight = 18.sp
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    WaveformVisualizer(
+                        isPlaying = isPlaying,
+                        progress = 0.45f,
+                        height = 32.dp
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Animated Waveform in Hero
-                    WaveformVisualizer(
-                        isPlaying = isPlaying,
-                        progress = 0.45f,
-                        height = 36.dp
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Action Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -204,30 +229,171 @@ fun HomeScreen(
                             onClick = onNavigateToCreate,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(46.dp)
+                                .height(44.dp)
                                 .testTag("hero_create_music_button"),
                             colors = ButtonDefaults.buttonColors(containerColor = DivPurple),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.MusicNote,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Create Music", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Create Song", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
 
                         OutlinedButton(
-                            onClick = onNavigateToExplore,
+                            onClick = onNavigateToStudio,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(46.dp)
-                                .testTag("hero_explore_songs_button"),
+                                .height(44.dp),
                             shape = RoundedCornerShape(12.dp),
-                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = Brush.horizontalGradient(listOf(DivCyan, DivPurpleLight)))
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                                brush = Brush.horizontalGradient(listOf(DivCyan, DivPurpleLight))
+                            )
                         ) {
-                            Text("Explore Songs", color = DivCyan, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Icon(Icons.Default.GraphicEq, contentDescription = null, tint = DivCyan, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Studio DAW", color = DivCyan, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Quick Access Studio Dashboard Hub
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Creative Studio Hub",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    maxItemsInEachRow = 3
+                ) {
+                    StudioHubTile(
+                        title = "Create Song",
+                        subtitle = "Full AI Generation",
+                        icon = Icons.Default.MusicNote,
+                        color = DivCyan,
+                        onClick = onNavigateToCreate,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StudioHubTile(
+                        title = "AI Lyrics",
+                        subtitle = "Songwriter Tool",
+                        icon = Icons.Default.AutoAwesome,
+                        color = DivPink,
+                        onClick = onNavigateToLyrics,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StudioHubTile(
+                        title = "Voice Studio",
+                        subtitle = "Record & Clean",
+                        icon = Icons.Default.Mic,
+                        color = DivPurpleLight,
+                        onClick = onNavigateToVoice,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    maxItemsInEachRow = 3
+                ) {
+                    StudioHubTile(
+                        title = "DAW Studio",
+                        subtitle = "5-Track Mixer",
+                        icon = Icons.Default.GraphicEq,
+                        color = Color(0xFF06D6A0),
+                        onClick = onNavigateToStudio,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StudioHubTile(
+                        title = "Music Video",
+                        subtitle = "AI Visual Clip",
+                        icon = Icons.Default.Movie,
+                        color = Color(0xFFFFD166),
+                        onClick = onNavigateToVideo,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StudioHubTile(
+                        title = "My Projects",
+                        subtitle = "${userProjects.size} sessions",
+                        icon = Icons.Default.Folder,
+                        color = DivCyan,
+                        onClick = onNavigateToProjects,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        // Recent Projects Section (if any exist)
+        if (userProjects.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Recent Projects & Drafts",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    )
+                    Text(
+                        text = "View All (${userProjects.size})",
+                        color = DivCyan,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { onNavigateToProjects() }
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    userProjects.take(5).forEach { project ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = DivSurfaceDark),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .width(200.dp)
+                                .border(1.dp, DivBorder, RoundedCornerShape(14.dp))
+                                .clickable { onNavigateToStudio() }
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = project.status.uppercase(),
+                                        color = if (project.status == "ready") Color(0xFF06D6A0) else DivPink,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(Icons.Default.Folder, contentDescription = null, tint = DivTextMuted, modifier = Modifier.size(14.dp))
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(project.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                                Text(project.genre, color = DivTextMuted, fontSize = 11.sp)
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text("Tap to resume editing", color = DivCyan, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
@@ -241,19 +407,8 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Sample Inspiration Prompts",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp
-                )
-                Text(
-                    text = "See More",
-                    color = DivCyan,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable { onNavigateToCreate() }
-                )
+                Text("Sample Inspiration Prompts", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text("See More", color = DivCyan, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable { onNavigateToCreate() })
             }
         }
 
@@ -287,100 +442,19 @@ fun HomeScreen(
             )
         }
 
-        item {
-            SamplePromptCard(
-                category = "Hip-hop",
-                promptText = "Create an energetic hip-hop song about ambition, discipline, and building a better future.",
-                onClick = {
-                    viewModel.populateSamplePrompt(
-                        "Hip-hop",
-                        "Inspirational",
-                        "Create an energetic hip-hop song about ambition, discipline, and building a better future."
-                    )
-                    onNavigateToCreate()
-                }
-            )
-        }
-
-        // HOW IT WORKS Section
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(DivSurfaceDark)
-                    .border(1.dp, DivBorder, RoundedCornerShape(20.dp))
-                    .padding(18.dp)
-            ) {
-                Text(
-                    text = "HOW IT WORKS",
-                    color = DivCyan,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 14.sp,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-
-                HowItWorksStepItem(
-                    stepNumber = "1",
-                    title = "Describe Your Song",
-                    description = "Tell the AI what type of song you want in plain words.",
-                    icon = Icons.Default.AutoAwesome
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                HowItWorksStepItem(
-                    stepNumber = "2",
-                    title = "Customize Your Sound",
-                    description = "Choose genre, mood, language, vocals, and song structure.",
-                    icon = Icons.Default.Tune
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                HowItWorksStepItem(
-                    stepNumber = "3",
-                    title = "Generate",
-                    description = "The neural music engine synthesizes lyrics, chords, and audio.",
-                    icon = Icons.Default.MusicNote
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                HowItWorksStepItem(
-                    stepNumber = "4",
-                    title = "Listen and Manage",
-                    description = "Play, save, organize, favorite, and export your creations.",
-                    icon = Icons.Default.Headphones
-                )
-            }
-        }
-
-        // Featured Trending Songs Section
+        // Trending Songs Section
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Trending AI Creations",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp
-                )
-                Text(
-                    text = "View All",
-                    color = DivCyan,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable { onNavigateToExplore() }
-                )
+                Text("Trending AI Creations", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text("View All", color = DivCyan, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable { onNavigateToExplore() })
             }
         }
 
-        items(publicSongs.take(4)) { song ->
+        items(publicSongs.take(3)) { song ->
             SongCard(
                 song = song,
                 isPlaying = isPlaying && currentPlayingSong?.id == song.id,
@@ -397,44 +471,42 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HowItWorksStepItem(
-    stepNumber: String,
+private fun StudioHubTile(
     title: String,
-    description: String,
-    icon: ImageVector
+    subtitle: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DivSurfaceDark),
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier
+            .height(96.dp)
+            .border(1.dp, DivBorder, RoundedCornerShape(14.dp))
+            .clickable { onClick() }
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(DivGradientBrand),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = stepNumber,
-                color = Color.White,
-                fontWeight = FontWeight.Black,
-                fontSize = 14.sp
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(
-                text = title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-            Text(
-                text = description,
-                color = DivTextSecondary,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
-            )
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            }
+
+            Column {
+                Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(subtitle, color = DivTextMuted, fontSize = 10.sp, maxLines = 1)
+            }
         }
     }
 }
