@@ -80,6 +80,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audio.AudioProcessingEngine
 import com.example.audio.AudioRecorderManager
+import com.example.audio.GeminiVoiceDirector
+import com.example.audio.VoiceAiRecommendation
 import com.example.audio.VocalEffectsConfig
 import com.example.ui.components.WaveformVisualizer
 import com.example.ui.theme.DivBackground
@@ -209,6 +211,9 @@ fun VocalStudioScreen(
     var processingStage by remember { mutableStateOf("") }
     var processingProgress by remember { mutableFloatStateOf(0f) }
     var mixedSongPath by remember { mutableStateOf<String?>(null) }
+    var aiRecommendation by remember { mutableStateOf<VoiceAiRecommendation?>(null) }
+    var isAiAnalyzing by remember { mutableStateOf(false) }
+    var isReversingVoice by remember { mutableStateOf(false) }
 
     // Instrumental Selection
     val userSongs by viewModel.userSongs.collectAsStateWithLifecycle()
@@ -220,6 +225,93 @@ fun VocalStudioScreen(
             .background(DivBackground)
             .testTag("vocal_studio_screen")
     ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = DivSurfaceDark),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+                .border(1.dp, DivPurple.copy(alpha = 0.65f), RoundedCornerShape(16.dp))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = DivCyan, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Gemini Reverse Voice AI", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("Gemini directs • local DSP processes", color = DivTextMuted, fontSize = 11.sp)
+                    }
+                }
+                Text(
+                    aiRecommendation?.summary ?: "Analyze your voice settings with Gemini, then reverse the audio locally without uploading the recording itself.",
+                    color = DivTextSecondary, fontSize = 12.sp
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = {
+                            val path = activeVocalPath ?: return@OutlinedButton
+                            coroutineScope.launch {
+                                isAiAnalyzing = true
+                                try {
+                                    aiRecommendation = GeminiVoiceDirector.analyzeVoice(context, path)
+                                    viewModel.showToast("Gemini AI recommendation ready")
+                                } catch (e: Exception) {
+                                    viewModel.showToast("Gemini AI setup/error: ${e.message ?: "try again"}")
+                                } finally { isAiAnalyzing = false }
+                            }
+                        },
+                        enabled = activeVocalPath != null && !isAiAnalyzing && !isReversingVoice,
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DivCyan),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (isAiAnalyzing) CircularProgressIndicator(modifier = Modifier.size(16.dp), color = DivCyan, strokeWidth = 2.dp)
+                        else Text("Analyze with Gemini", fontSize = 11.sp)
+                    }
+                    Button(
+                        onClick = {
+                            val path = activeVocalPath ?: return@Button
+                            coroutineScope.launch {
+                                isReversingVoice = true
+                                try {
+                                    aiRecommendation?.let {
+                                        pitchShiftSemitones = it.pitchShiftSemitones
+                                        bassGain = it.bassGain
+                                        midGain = it.midGain
+                                        trebleGain = it.trebleGain
+                                        compressionRatio = it.compressionRatio
+                                        reverbAmount = it.reverbAmount
+                                        delayAmount = it.delayAmount
+                                        noiseReduction = it.noiseReduction
+                                        volumeNormalization = it.volumeNormalization
+                                    }
+                                    val reversed = AudioProcessingEngine.reverseAudio(context, path) { progress, stage ->
+                                        processingProgress = progress; processingStage = stage
+                                    }
+                                    activeVocalPath = reversed
+                                    viewModel.showToast("Reverse Voice created successfully")
+                                } catch (e: Exception) {
+                                    viewModel.showToast("Reverse voice failed: ${e.message ?: "unsupported audio"}")
+                                } finally { isReversingVoice = false }
+                            }
+                        },
+                        enabled = activeVocalPath != null && !isReversingVoice && !isAiAnalyzing,
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DivPurpleLight),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (isReversingVoice) CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                        else Text(if (aiRecommendation == null) "Reverse Voice" else "AI + Reverse", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                aiRecommendation?.let {
+                    Text(
+                        "AI DSP: Pitch ${it.pitchShiftSemitones} st • Bass ${String.format("%.1f", it.bassGain)}x • Mids ${String.format("%.1f", it.midGain)}x • Reverb ${(it.reverbAmount * 100).toInt()}%",
+                        color = DivCyan, fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+
         // Header
         Row(
             modifier = Modifier
