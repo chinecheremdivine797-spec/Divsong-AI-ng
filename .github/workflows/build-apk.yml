@@ -36,41 +36,12 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$KEYSTORE_BASE64"
-          echo "$KEYSTORE_BASE64" | base64 --decode > jobcheckng-release.jks
-          test -s jobcheckng-release.jks
-
-      - name: Configure release signing
-        shell: bash
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "$KEYSTORE_PASSWORD"
-          test -n "$KEY_ALIAS"
-          test -n "$KEY_PASSWORD"
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("app/build.gradle")
-          s = p.read_text()
-          if "signingConfigs {" not in s:
-              s = s.replace("android {", """android {
-    signingConfigs {
-        release {
-            storeFile file("../jobcheckng-release.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD")
-            keyAlias System.getenv("KEY_ALIAS")
-            keyPassword System.getenv("KEY_PASSWORD")
-        }
-    }""", 1)
-          if "signingConfig signingConfigs.release" not in s:
-              s = s.replace("buildTypes {\n        release {", "buildTypes {\n        release {\n            signingConfig signingConfigs.release", 1)
-          p.write_text(s)
-          PY
+          echo "$KEYSTORE_BASE64" | base64 --decode > divsongai-release.jks
+          test -s divsongai-release.jks
 
       - name: Build release APK
         env:
+          KEYSTORE_PATH: ${{ github.workspace }}/divsongai-release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
