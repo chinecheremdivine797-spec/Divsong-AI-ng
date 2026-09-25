@@ -170,6 +170,108 @@ object AudioProcessingEngine {
         }
     }
 
+    /** Reverses an audio file at the PCM frame level and exports a WAV file. */
+    suspend fun reverseAudio(
+        context: Context,
+        inputAudioPath: String,
+        onProgress: (Float, String) -> Unit = { _, _ -> }
+    ): String = withContext(Dispatchers.IO) {
+        require(File(inputAudioPath).exists()) { "Audio file not found" }
+        onProgress(0.1f, "Decoding audio...")
+        val decoded = decodeToPcm16(inputAudioPath)
+        onProgress(0.55f, "Reversing voice frames...")
+        val frameSize = decoded.channels * 2
+        val frameCount = decoded.pcm.size / frameSize
+        val reversed = ByteArray(decoded.pcm.size)
+        for (frame in 0 until frameCount) {
+            val sourceFrame = frameCount - 1 - frame
+            System.arraycopy(decoded.pcm, sourceFrame * frameSize, reversed, frame * frameSize, frameSize)
+        }
+        val outputDir = File(context.filesDir, "reversed_voice").apply { mkdirs() }
+        val outputFile = File(outputDir, "DIV_SONG_AI_Reversed_1790371102361.wav")
+        writePcmBytesToWav(outputFile, reversed, decoded.sampleRate, decoded.channels)
+        onProgress(1.0f, "Reverse voice complete!")
+        outputFile.absolutePath
+    }
+
+    private data class DecodedPcm(val pcm: ByteArray, val sampleRate: Int, val channels: Int)
+
+    private fun decodeToPcm16(path: String): DecodedPcm {
+        val file = File(path)
+        if (file.extension.equals("wav", ignoreCase = true)) return readPcm16Wav(file)
+        val extractor = android.media.MediaExtractor()
+        extractor.setDataSource(path)
+        var trackIndex = -1
+        var format: android.media.MediaFormat? = null
+        for (i in 0 until extractor.trackCount) {
+            val candidate = extractor.getTrackFormat(i)
+            if (candidate.getString(android.media.MediaFormat.KEY_MIME).orEmpty().startsWith("audio/")) {
+                trackIndex = i; format = candidate; break
+            }
+        }
+        require(trackIndex >= 0 && format != null) { "No supported audio track found" }
+        extractor.selectTrack(trackIndex)
+        val codec = android.media.MediaCodec.createDecoderByType(format!!.getString(android.media.MediaFormat.KEY_MIME)!!)
+        codec.configure(format, null, null, 0); codec.start()
+        val info = android.media.MediaCodec.BufferInfo()
+        val output = java.io.ByteArrayOutputStream()
+        var inputEos = false; var outputEos = false
+        try {
+            while (!outputEos) {
+                if (!inputEos) {
+                    val inputIndex = codec.dequeueInputBuffer(10_000)
+                    if (inputIndex >= 0) {
+                        val inputBuffer = codec.getInputBuffer(inputIndex)!!; inputBuffer.clear()
+                        val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                        if (sampleSize < 0) { codec.queueInputBuffer(inputIndex, 0, 0, 0L, android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputEos = true }
+                        else { codec.queueInputBuffer(inputIndex, 0, sampleSize, extractor.sampleTime, 0); extractor.advance() }
+                    }
+                }
+                when (val outputIndex = codec.dequeueOutputBuffer(info, 10_000)) {
+                    in 0..Int.MAX_VALUE -> if (outputIndex >= 0) {
+                        val outputBuffer = codec.getOutputBuffer(outputIndex)
+                        if (outputBuffer != null && info.size > 0) {
+                            outputBuffer.position(info.offset); outputBuffer.limit(info.offset + info.size)
+                            val bytes = ByteArray(info.size); outputBuffer.get(bytes); output.write(bytes)
+                        }
+                        outputEos = (info.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
+                        codec.releaseOutputBuffer(outputIndex, false)
+                    }
+                    android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> { format = codec.outputFormat }
+                    else -> Unit
+                }
+            }
+        } finally {
+            try { codec.stop() } catch (_: Exception) { }; codec.release(); extractor.release()
+        }
+        val outputFormat = format ?: error("Audio decoder did not provide a format")
+        DecodedPcm(output.toByteArray(), outputFormat.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE), outputFormat.getInteger(android.media.MediaFormat.KEY_CHANNEL_COUNT))
+    }
+
+    private fun readPcm16Wav(file: File): DecodedPcm {
+        val bytes = file.readBytes()
+        require(bytes.size >= 44 && String(bytes, 0, 4) == "RIFF" && String(bytes, 8, 4) == "WAVE") { "Invalid WAV file" }
+        val bb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN); bb.position(22)
+        val channels = bb.short.toInt(); val sampleRate = bb.int; bb.position(34)
+        require(bb.short.toInt() == 16) { "Only 16-bit PCM WAV is supported" }
+        var offset = 12; var size = 0
+        while (offset + 8 <= bytes.size) {
+            val id = String(bytes, offset, 4); val chunkSize = ByteBuffer.wrap(bytes, offset + 4, 4).order(ByteOrder.LITTLE_ENDIAN).int
+            if (id == "data") { offset += 8; size = min(chunkSize, bytes.size - offset); break }
+            offset += 8 + chunkSize
+        }
+        require(size > 0) { "WAV data chunk not found" }
+        return DecodedPcm(bytes.copyOfRange(offset, offset + size), sampleRate, channels)
+    }
+
+    private fun writePcmBytesToWav(outputFile: File, pcm: ByteArray, sampleRate: Int, channels: Int) {
+        val totalAudioLen = pcm.size.toLong(); val header = ByteArray(44); val bb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN)
+        bb.put("RIFF".toByteArray()); bb.putInt((totalAudioLen + 36L).toInt()); bb.put("WAVE".toByteArray()); bb.put("fmt ".toByteArray())
+        bb.putInt(16); bb.putShort(1.toShort()); bb.putShort(channels.toShort()); bb.putInt(sampleRate); bb.putInt((sampleRate.toLong() * channels * 2L).toInt())
+        bb.putShort((channels * 2).toShort()); bb.putShort(16.toShort()); bb.put("data".toByteArray()); bb.putInt(totalAudioLen.toInt())
+        FileOutputStream(outputFile).use { it.write(header); it.write(pcm) }
+    }
+
     private fun writePcmToWav(outputFile: File, samples: ShortArray, sampleRate: Int, channels: Int) {
         val totalAudioLen = (samples.size * 2).toLong()
         val totalDataLen = totalAudioLen + 36
