@@ -1,7 +1,6 @@
 package com.example
 
 import android.os.Bundle
-import com.google.firebase.Firebase
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.FirebaseAppCheck
 import androidx.activity.ComponentActivity
