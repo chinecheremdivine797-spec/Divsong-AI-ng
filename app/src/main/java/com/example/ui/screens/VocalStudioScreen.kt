@@ -286,8 +286,35 @@ fun VocalStudioScreen(
                                     val reversed = AudioProcessingEngine.reverseAudio(context, path) { progress, stage ->
                                         processingProgress = progress; processingStage = stage
                                     }
-                                    activeVocalPath = reversed
-                                    viewModel.showToast("Reverse Voice created successfully")
+
+                                    val finalPath = aiRecommendation?.let {
+                                        AudioProcessingEngine.processVocalTrack(
+                                            context = context,
+                                            inputAudioPath = reversed,
+                                            config = VocalEffectsConfig(
+                                                noiseReduction = it.noiseReduction,
+                                                silenceRemoval = silenceRemoval,
+                                                volumeNormalization = it.volumeNormalization,
+                                                vocalEnhancement = vocalEnhancement,
+                                                bassGain = it.bassGain,
+                                                midGain = it.midGain,
+                                                trebleGain = it.trebleGain,
+                                                compressionRatio = it.compressionRatio,
+                                                reverbAmount = it.reverbAmount,
+                                                delayAmount = it.delayAmount,
+                                                pitchShiftSemitones = it.pitchShiftSemitones
+                                            )
+                                        ) { progress, stage ->
+                                            processingProgress = progress
+                                            processingStage = "AI DSP: $stage"
+                                        }
+                                    } ?: reversed
+
+                                    activeVocalPath = finalPath
+                                    viewModel.showToast(
+                                        if (aiRecommendation != null) "AI + Reverse voice created successfully"
+                                        else "Reverse Voice created successfully"
+                                    )
                                 } catch (e: Exception) {
                                     viewModel.showToast("Reverse voice failed: ${e.message ?: "unsupported audio"}")
                                 } finally { isReversingVoice = false }
