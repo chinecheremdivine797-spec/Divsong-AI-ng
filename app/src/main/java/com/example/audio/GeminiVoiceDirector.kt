@@ -3,7 +3,8 @@ package com.example.audio
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import com.google.firebase.Firebase
-import com.google.firebase.ai.GenerativeBackend
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -31,7 +32,7 @@ object GeminiVoiceDirector {
             metadata.setDataSource(audioPath)
             val durationMs = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val sampleRate = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)?.toIntOrNull() ?: 44100
-            val channels = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CHANNEL_COUNT)?.toIntOrNull() ?: 1
+            val channels = 1
             val format = audioPath.substringAfterLast('.', "unknown").lowercase()
 
             val model = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel("gemini-3.8-flash")
