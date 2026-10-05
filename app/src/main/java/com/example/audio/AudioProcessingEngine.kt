@@ -227,18 +227,17 @@ object AudioProcessingEngine {
                         else { codec.queueInputBuffer(inputIndex, 0, sampleSize, extractor.sampleTime, 0); extractor.advance() }
                     }
                 }
-                when (val outputIndex = codec.dequeueOutputBuffer(info, 10_000)) {
-                    in 0..Int.MAX_VALUE -> if (outputIndex >= 0) {
-                        val outputBuffer = codec.getOutputBuffer(outputIndex)
-                        if (outputBuffer != null && info.size > 0) {
-                            outputBuffer.position(info.offset); outputBuffer.limit(info.offset + info.size)
-                            val bytes = ByteArray(info.size); outputBuffer.get(bytes); output.write(bytes)
-                        }
-                        outputEos = (info.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
-                        codec.releaseOutputBuffer(outputIndex, false)
+                val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
+                if (outputIndex >= 0) {
+                    val outputBuffer = codec.getOutputBuffer(outputIndex)
+                    if (outputBuffer != null && info.size > 0) {
+                        outputBuffer.position(info.offset); outputBuffer.limit(info.offset + info.size)
+                        val bytes = ByteArray(info.size); outputBuffer.get(bytes); output.write(bytes)
                     }
-                    android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> { format = codec.outputFormat }
-                    else -> Unit
+                    outputEos = (info.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
+                    codec.releaseOutputBuffer(outputIndex, false)
+                } else if (outputIndex == android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    format = codec.outputFormat
                 }
             }
         } finally {
