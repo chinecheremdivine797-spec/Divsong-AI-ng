@@ -53,73 +53,88 @@ object AudioProcessingEngine {
         config: VocalEffectsConfig,
         onProgress: (Float, String) -> Unit = { _, _ -> }
     ): String = withContext(Dispatchers.IO) {
-        onProgress(0.1f, "Reading vocal audio stream...")
-        val inputFile = File(inputAudioPath)
-        val outputDir = File(context.filesDir, "processed_vocals").apply { mkdirs() }
-        val outputFile = File(outputDir, "vocal_clean_${System.currentTimeMillis()}.wav")
+        require(File(inputAudioPath).exists()) { "Audio file not found" }
 
-        try {
-            // Read or generate PCM samples for processing
-            val rawBytes = if (inputFile.exists() && inputFile.length() > 0) {
-                inputFile.readBytes()
-            } else {
-                ByteArray(0)
+        onProgress(0.08f, "Decoding the original vocal...")
+        val decoded = decodeToPcm16(inputAudioPath)
+        val channels = decoded.channels.coerceIn(1, 2)
+        val sampleRate = decoded.sampleRate.coerceAtLeast(8000)
+
+        // Process the real decoded recording. Never synthesize a replacement tone.
+        val source = ByteBuffer.wrap(decoded.pcm)
+            .order(ByteOrder.LITTLE_ENDIAN)
+            .asShortBuffer()
+        val sourceSamples = ShortArray(source.remaining())
+        source.get(sourceSamples)
+
+        onProgress(0.28f, "Applying AI-directed voice DSP...")
+        val pitchRatio = Math.pow(2.0, config.pitchShiftSemitones.coerceIn(-12, 12) / 12.0)
+        val processed = ShortArray(sourceSamples.size)
+
+        for (i in processed.indices) {
+            val channel = i % channels
+            val frame = i / channels
+            val sourceFrame = (frame * pitchRatio).toInt().coerceIn(0, (sourceSamples.size / channels) - 1)
+            var sample = sourceSamples[sourceFrame * channels + channel].toFloat()
+
+            if (config.noiseReduction) {
+                val gate = 420f
+                if (kotlin.math.abs(sample) < gate) sample *= 0.18f
             }
 
-            onProgress(0.3f, "Applying noise reduction & silence gating...")
-            // Synthesize high-fidelity voice-processed wave representation
-            val durationSeconds = (rawBytes.size / (SAMPLE_RATE * 2)).coerceIn(10, 60)
-            val numSamples = SAMPLE_RATE * durationSeconds
-            val samples = ShortArray(numSamples)
-
-            // Fill baseline warm vocal waveform if raw input is an encoded stream or container
-            val fundamentalFreq = 180.0 // Hz (vocal range)
-            for (i in 0 until numSamples) {
-                val t = i.toDouble() / SAMPLE_RATE
-                // Rich vocal formant synthesis
-                var s = sin(2.0 * Math.PI * fundamentalFreq * t) * 0.5 +
-                        sin(2.0 * Math.PI * (fundamentalFreq * 2.0) * t) * 0.25 +
-                        sin(2.0 * Math.PI * (fundamentalFreq * 3.0) * t) * 0.15
-                // Modulation
-                s *= (1.0 + 0.05 * sin(2.0 * Math.PI * 5.0 * t))
-                samples[i] = (s * 16000.0).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-            }
-
-            onProgress(0.6f, "Applying 3-band EQ & compression...")
-            // Apply EQ and Compression
-            for (i in samples.indices) {
-                var sampleVal = samples[i].toFloat()
-                // EQ adjustments
-                sampleVal = sampleVal * config.midGain
-                // Compression
-                if (sampleVal > 8000f) {
-                    val excess = sampleVal - 8000f
-                    sampleVal = 8000f + (excess / config.compressionRatio)
-                } else if (sampleVal < -8000f) {
-                    val excess = sampleVal + 8000f
-                    sampleVal = -8000f + (excess / config.compressionRatio)
-                }
-                samples[i] = sampleVal.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-            }
-
-            onProgress(0.85f, "Adding room acoustics, reverb & delay...")
-            if (config.reverbAmount > 0f) {
-                val delaySamples = (SAMPLE_RATE * 0.05).toInt()
-                for (i in delaySamples until samples.size) {
-                    val wet = (samples[i - delaySamples] * config.reverbAmount * 0.4f).toInt()
-                    val mixed = samples[i] + wet
-                    samples[i] = mixed.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-                }
-            }
-
-            onProgress(0.95f, "Writing calibrated master WAV...")
-            writePcmToWav(outputFile, samples, SAMPLE_RATE, 1)
-            onProgress(1.0f, "Vocal processing complete!")
-            outputFile.absolutePath
-        } catch (e: Exception) {
-            Log.e(TAG, "Error in vocal processing", e)
-            inputAudioPath
+            sample *= config.midGain.coerceIn(0.0f, 2.0f)
+            processed[i] = sample
+                .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
+                .toInt()
+                .toShort()
         }
+
+        onProgress(0.55f, "Compressing and normalizing the real voice...")
+        if (config.compressionRatio > 1f) {
+            val threshold = 9000f
+            for (i in processed.indices) {
+                val x = processed[i].toFloat()
+                val ax = kotlin.math.abs(x)
+                if (ax > threshold) {
+                    val compressed = threshold + (ax - threshold) / config.compressionRatio
+                    processed[i] = kotlin.math.copySign(compressed, x)
+                        .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
+                        .toInt().toShort()
+                }
+            }
+        }
+
+        if (config.volumeNormalization) {
+            var currentPeak = 1f
+            for (s in processed) currentPeak = max(currentPeak, kotlin.math.abs(s.toFloat()))
+            val gain = (30000f / currentPeak).coerceIn(0.5f, 2.0f)
+            for (i in processed.indices) {
+                processed[i] = (processed[i] * gain)
+                    .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
+                    .toInt().toShort()
+            }
+        }
+
+        onProgress(0.72f, "Adding AI-directed ambience without replacing the voice...")
+        val delayFrames = (sampleRate * 0.055f).toInt().coerceAtLeast(1)
+        val delaySamples = delayFrames * channels
+        if (config.reverbAmount > 0f || config.delayAmount > 0f) {
+            for (i in delaySamples until processed.size) {
+                val dry = processed[i].toFloat()
+                val delayed = processed[i - delaySamples].toFloat()
+                val wet = (config.reverbAmount * 0.22f + config.delayAmount * 0.12f).coerceIn(0f, 0.35f)
+                processed[i] = (dry + delayed * wet)
+                    .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
+                    .toInt().toShort()
+            }
+        }
+
+        onProgress(0.92f, "Exporting processed voice...")
+        val outputDir = File(context.filesDir, "processed_vocals").apply { mkdirs() }
+        val outputFile = File(outputDir, "vocal_clean_" + System.currentTimeMillis() + ".wav")
+        writePcmToWav(outputFile, processed, sampleRate, channels)
+        onProgress(1.0f, "Real vocal processing complete!")
+        outputFile.absolutePath
     }
 
     /**
