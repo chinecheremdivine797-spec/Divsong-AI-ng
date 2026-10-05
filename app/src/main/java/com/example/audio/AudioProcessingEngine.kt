@@ -244,7 +244,7 @@ object AudioProcessingEngine {
             try { codec.stop() } catch (_: Exception) { }; codec.release(); extractor.release()
         }
         val outputFormat = format ?: error("Audio decoder did not provide a format")
-        DecodedPcm(output.toByteArray(), outputFormat.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE), outputFormat.getInteger(android.media.MediaFormat.KEY_CHANNEL_COUNT))
+        return DecodedPcm(output.toByteArray(), outputFormat.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE), outputFormat.getInteger(android.media.MediaFormat.KEY_CHANNEL_COUNT))
     }
 
     private fun readPcm16Wav(file: File): DecodedPcm {
